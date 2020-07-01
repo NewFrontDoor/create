@@ -1,19 +1,18 @@
 'use strict';
 const execa = require('execa');
-const hasYarn = require('has-yarn');
+// const hasYarn = require('has-yarn'); - add later once actually installing packages
 const chalk = require('chalk');
 const chalkPipe = require('chalk-pipe');
 const inquirer = require('inquirer');
 const config = require('./config');
 
 const Spinners = require('spinnies');
+const {Octokit} = require('@octokit/rest');
 
-const utility = require('./lib/utility');
 const {initialQs, nextjsQs, sanityQs, themeQs} = require('./lib/questions');
+const utility = require('./lib/utility');
 const github = require('./lib/github');
 const factory = require('./lib/factories');
-
-const {Octokit} = require('@octokit/rest');
 
 // This is registering a plugin on the inquirer instance
 // for changing colours in terminal based on provided hex values
