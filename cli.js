@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 'use strict';
-require('dotenv').config()
+require('dotenv').config();
 const arrExclude = require('arr-exclude');
 const createNFD = require('.');
 
