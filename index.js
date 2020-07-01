@@ -1,13 +1,12 @@
 'use strict';
 const execa = require('execa');
-// const hasYarn = require('has-yarn'); - add later once actually installing packages
+// Const hasYarn = require('has-yarn'); - add later once actually installing packages
 const chalk = require('chalk');
 const chalkPipe = require('chalk-pipe');
 const inquirer = require('inquirer');
 const config = require('./config');
 
 const Spinners = require('spinnies');
-const {Octokit} = require('@octokit/rest');
 
 const {initialQs, nextjsQs, sanityQs, themeQs} = require('./lib/questions');
 const utility = require('./lib/utility');
@@ -27,9 +26,6 @@ const questions = [
 ];
 
 module.exports = async () => {
-  // Set the org name for accessing github
-  const nfd = config.githubOrg;
-
   // Get stored token and initialize auth object
   let token = github.getStoredGithubToken();
 
@@ -37,23 +33,25 @@ module.exports = async () => {
     token = await github.getPersonalAccessToken();
   }
 
-  const octokit = new Octokit({auth: token});
-
   // CLI query function - get all the details!!
-  const answers = await inquirer
-    .prompt(questions)
-    .then((answers) => {
-      return answers;
-    })
-    .catch((error) => {
-      if (error.isTtyError) {
-        // Prompt couldn't be rendered in the current environment
-      } else {
-        // Something else when wrong
-      }
-    });
+  const answers = await inquirer.prompt(questions).catch((error) => {
+    if (error.isTtyError) {
+      // Prompt couldn't be rendered in the current environment
+    } else {
+      // Something else when wrong
+    }
+  });
 
-  // Orgname here refers to the client church/organisation
+  const factoryProps = {
+    // Set the org name for accessing github
+    githubOrg: config.githubOrg,
+    // Orgname here refers to the client church/organisation
+    orgname: await answers.orgname,
+    orgnameKebab: await utility.toKebabCase(answers.orgname),
+    orgurl: await answers.url,
+    token
+  };
+
   const orgname = await answers.orgname;
   const orgnameKebab = await utility.toKebabCase(answers.orgname);
   const orgurl = await answers.url;
@@ -103,11 +101,7 @@ module.exports = async () => {
   if (answers.scaffold.includes('NextJS')) {
     const repo = await factory
       .createRepo({
-        nfd,
-        octokit,
-        orgname,
-        orgurl,
-        orgnameKebab,
+        ...factoryProps,
         type: 'NextJS'
       })
       .then((result) => {
@@ -132,11 +126,7 @@ module.exports = async () => {
   if (answers.scaffold.includes('Sanity')) {
     const repo = await factory
       .createRepo({
-        nfd,
-        octokit,
-        orgname,
-        orgurl,
-        orgnameKebab,
+        ...factoryProps,
         type: 'Sanity'
       })
       .then((result) => {
