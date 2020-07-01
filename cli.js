@@ -8,4 +8,5 @@ const cli = process.argv.slice(2);
 const args = arrExclude(cli, ['--next']);
 const next = cli.includes('--next');
 
+// Run index.js
 createNFD({args, next});
