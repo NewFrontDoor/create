@@ -5,13 +5,19 @@ const chalk = require('chalk');
 const chalkPipe = require('chalk-pipe');
 const inquirer = require('inquirer');
 const config = require('./config');
+const fs = require('fs');
 
 const Spinners = require('spinnies');
 
 const {initialQs, nextjsQs, sanityQs, themeQs} = require('./lib/questions');
-const {toKebabCase} = require('./lib/utility');
+const {
+  toKebabCase,
+  createPackageJson,
+  createGitIgnore
+} = require('./lib/utility');
 const factory = require('./lib/factories');
 const {generatePalette} = require('./lib/factories');
+const {stdout} = require('process');
 
 // This is registering a plugin on the inquirer instance
 // for changing colours in terminal based on provided hex values
@@ -26,8 +32,9 @@ const questions = [
 ];
 
 module.exports = async () => {
-  let palette;
-  // CLI query function - get all the details!!
+  console.clear();
+
+  const spinnies = new Spinners();
   const answers = await inquirer.prompt(questions).catch((error) => {
     if (error.isTtyError) {
       // Prompt couldn't be rendered in the current environment
@@ -37,15 +44,15 @@ module.exports = async () => {
   });
 
   const factoryProps = {
-    // Set the org name for accessing github
+    execa,
+    palette: await generatePalette(answers),
     githubOrg: config.githubOrg,
-    // Orgname here refers to the client church/organisation
     orgname: await answers.orgname,
     orgnameKebab: await toKebabCase(answers.orgname),
-    orgurl: await answers.url
+    orgurl: await answers.url,
+    wantsUI: await answers.standard_ui,
+    spinnies
   };
-
-  console.clear();
 
   console.log(
     'Creating a new project for ' +
@@ -55,102 +62,86 @@ module.exports = async () => {
       ')'
   );
 
-  const spinnies = new Spinners();
-  if (answers.scaffold.includes('NextJS')) {
-    spinnies.add('nextrepo', {
-      text: 'Creating GitHub repo for NextJS app...',
-      color: 'greenBright'
-    });
-    spinnies.add('nextapp', {
-      text: 'Create NextJS app',
-      color: 'greenBright'
-    });
-    spinnies.add('pushnextjs', {
-      text: 'Push NextJS app to GitHub repo',
-      color: 'greenBright'
-    });
-  }
+  spinnies.add('projectrepo', {
+    text: 'Creating project repo',
+    color: 'greenBright'
+  });
 
   if (answers.scaffold.includes('Sanity')) {
-    spinnies.add('sanityrepo', {
-      text: 'Creating GitHub repo for Sanity project...',
-      color: 'greenBright'
-    });
     spinnies.add('sanityproject', {
       text: 'Create Sanity project',
       color: 'greenBright'
     });
-    spinnies.add('pushsanity', {
-      text: 'Push Sanity project to GitHub repo',
+  }
+
+  if (answers.scaffold.includes('NextJS')) {
+    spinnies.add('nextapp', {
+      text: 'Create NextJS app',
       color: 'greenBright'
     });
   }
 
-  // If opted for Theme, create a colour scheme
-  if (answers.scaffold.includes('Theme')) {
-    if (
-      ['NextJS', 'Sanity'].some((match) => answers.scaffold.includes(match))
-    ) {
-      palette = await generatePalette(answers);
-    } else {
-      console.log('Generated a palette:');
-      console.log(await generatePalette(answers));
-    }
+  spinnies.add('projectgithub', {
+    text: 'Push project to github',
+    color: 'greenBright'
+  });
+
+  fs.mkdirSync(factoryProps.orgnameKebab, (err) => {
+    if (err) throw err;
+  });
+  process.chdir(factoryProps.orgnameKebab);
+  fs.writeFile('package.json', createPackageJson(), (err) => {
+    if (err) throw err;
+    console.log('Created package.json');
+  });
+  fs.writeFile('.gitignore', createGitIgnore(), (err) => {
+    if (err) throw err;
+    console.log('Created .gitignore');
+  });
+
+  await execa('git', ['init']);
+
+  await factory
+    .createRepo({
+      ...factoryProps
+    })
+    .then((result) => {
+      spinnies.succeed('projectrepo', {
+        text: 'Project GitHub repo created!',
+        color: 'greenBright'
+      });
+      return result;
+    })
+    .catch((error) => {
+      spinnies.fail('projectrepo', {
+        text: 'Project GitHub repo creation failed',
+        color: 'redBright'
+      });
+      console.log(error);
+      process.exit(1);
+    });
+
+  // If opted for Sanity, create a Sanity repo
+  if (answers.scaffold.includes('Sanity')) {
+    await factory.createSanity({
+      ...factoryProps
+    });
   }
 
   // If opted for NextJS, create a NextJS repo
   if (answers.scaffold.includes('NextJS')) {
-    const repo = await factory
-      .createRepo({
-        ...factoryProps,
-        type: 'NextJS'
-      })
-      .then((result) => {
-        spinnies.succeed('nextrepo', {
-          text: 'NextJS GitHub repo created!',
-          color: 'greenBright'
-        });
-        return result;
-      })
-      .catch((error) => {
-        spinnies.fail('nextrepo', {
-          text: 'NextJS GitHub repo creation failed',
-          color: 'redBright'
-        });
-        console.log(error);
-        process.exit(1);
-      });
-    factory.createNextApp({execa, repo, spinnies, palette});
+    await factory.createNextApp({...factoryProps});
   }
 
-  // If opted for Sanity, create a Sanity repo
-  if (answers.scaffold.includes('Sanity')) {
-    const repo = await factory
-      .createRepo({
-        ...factoryProps,
-        type: 'Sanity'
-      })
-      .then((result) => {
-        spinnies.succeed('sanityrepo', {
-          text: 'Sanity GitHub repo created!',
-          color: 'greenBright'
-        });
-        return result;
-      })
-      .catch((error) => {
-        spinnies.fail('sanityrepo', {
-          text: 'Sanity GitHub repo creation failed',
-          color: 'redBright'
-        });
-        console.log(error);
-        process.exit(1);
-      });
-    factory.createSanity({
-      execa,
-      repo,
-      orgname: factoryProps.orgname,
-      spinnies,
-      palette
-    });
-  }
+  await spinnies.update('projectgithub', {
+    text: 'Pushing files to GitHub...',
+    color: 'greenBright'
+  });
+
+  await execa('git', ['push', '-u', 'origin', 'master']);
+
+  await spinnies.succeed('projectrepo', {
+    text: 'Project committed to GitHub!',
+    color: 'greenBright'
+  });
 };

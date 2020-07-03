@@ -1,13 +1,11 @@
 # This is the create-newfrontdoor project
 
-## instructions
-- Clone this repo
-- run `yarn`
-- run `npm install -g`
-- cd to your top-level project folder
-- run `nfd`
+## Prerequisites
+This is a tooling shortcut for generating all needed components of a new site project. So the expectation is that you'll have installed the various CLI tools to make it work. These include:
+- Node (https://nodejs.org/en/download/)
+- Github CLI (https://github.com/cli/cli#installation)
+- Sanity CLI (npm install -g @sanity/cli)
 
-## Todo
-- install NFD UI library packages when 'y' selected
-- install NFD UI library schemas when 'y' selected
-- Modify initial colour scheme in NextJS and Sanity Studio when 'y' selected
+
+## instructions
+- run `npx create-newfrontdoor`
