@@ -8,4 +8,4 @@ This is a tooling shortcut for generating all needed components of a new site pr
 
 
 ## instructions
-- run `npx create-newfrontdoor`
+- run `npm init @newfrontdoor`
