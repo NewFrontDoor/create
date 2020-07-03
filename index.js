@@ -9,9 +9,9 @@ const config = require('./config');
 const Spinners = require('spinnies');
 
 const {initialQs, nextjsQs, sanityQs, themeQs} = require('./lib/questions');
-const utility = require('./lib/utility');
-const github = require('./lib/github');
+const {toKebabCase} = require('./lib/utility');
 const factory = require('./lib/factories');
+const {generatePalette} = require('./lib/factories');
 
 // This is registering a plugin on the inquirer instance
 // for changing colours in terminal based on provided hex values
@@ -26,13 +26,7 @@ const questions = [
 ];
 
 module.exports = async () => {
-  // Get stored token and initialize auth object
-  let token = github.getStoredGithubToken();
-
-  if (!token) {
-    token = await github.getPersonalAccessToken();
-  }
-
+  let palette;
   // CLI query function - get all the details!!
   const answers = await inquirer.prompt(questions).catch((error) => {
     if (error.isTtyError) {
@@ -47,22 +41,17 @@ module.exports = async () => {
     githubOrg: config.githubOrg,
     // Orgname here refers to the client church/organisation
     orgname: await answers.orgname,
-    orgnameKebab: await utility.toKebabCase(answers.orgname),
-    orgurl: await answers.url,
-    token
+    orgnameKebab: await toKebabCase(answers.orgname),
+    orgurl: await answers.url
   };
-
-  const orgname = await answers.orgname;
-  const orgnameKebab = await utility.toKebabCase(answers.orgname);
-  const orgurl = await answers.url;
 
   console.clear();
 
   console.log(
     'Creating a new project for ' +
-      orgname +
+      factoryProps.orgname +
       ' (' +
-      `${orgurl || orgnameKebab}` +
+      `${factoryProps.orgurl || factoryProps.orgnameKebab}` +
       ')'
   );
 
@@ -97,6 +86,18 @@ module.exports = async () => {
     });
   }
 
+  // If opted for Theme, create a colour scheme
+  if (answers.scaffold.includes('Theme')) {
+    if (
+      ['NextJS', 'Sanity'].some((match) => answers.scaffold.includes(match))
+    ) {
+      palette = await generatePalette(answers);
+    } else {
+      console.log('Generated a palette:');
+      console.log(await generatePalette(answers));
+    }
+  }
+
   // If opted for NextJS, create a NextJS repo
   if (answers.scaffold.includes('NextJS')) {
     const repo = await factory
@@ -119,7 +120,7 @@ module.exports = async () => {
         console.log(error);
         process.exit(1);
       });
-    factory.createNextApp({execa, repo, spinnies});
+    factory.createNextApp({execa, repo, spinnies, palette});
   }
 
   // If opted for Sanity, create a Sanity repo
@@ -144,6 +145,12 @@ module.exports = async () => {
         console.log(error);
         process.exit(1);
       });
-    factory.createSanity({execa, repo, orgname, spinnies});
+    factory.createSanity({
+      execa,
+      repo,
+      orgname: factoryProps.orgname,
+      spinnies,
+      palette
+    });
   }
 };
