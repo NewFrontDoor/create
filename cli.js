@@ -1,34 +1,45 @@
 #!/usr/bin/env node
 'use strict';
 const meow = require('meow');
+const boxen = require('boxen');
+const checkTools = require('./lib/check-tools');
+const askQuestions = require('./lib/ask-questions');
+const createProject = require('./lib/project');
+
 const createNFD = require('.');
 
 const cli = meow(
   `
 	Usage
-	  $ nfd <orgname>
+    $ nfd <orgname>
 
 	Options
-      --url, -u  Define a url
-      --next, -n Initialise NextJS
-      --sanity, -s Initialise Sanity
-      --theme, -t Initialise theme files with automated defaults
-      --extended, -e Install NewFrontDoor UI library elements
+    --url, -u        Define a url
+    --next, -n       Initialise NextJS
+    --sanity, -s     Initialise Sanity
+    --theme, -t      Initialise theme files with automated defaults
+    --extended, -e   Install NewFrontDoor UI library elements
+    
+    --dry, -d        Dry run
 
 	Examples
-      $ nfd "Sample church" -nest -u sample.church
+    $ nfd "Sample church" --next --url sample.church
       
-    Sample church
+  Sample church
     {
-        next: true,
-        extended: true,
-        sanity: true,
-        theme: true,
-        url: 'sample.church'
+      next: true,
+      extended: true,
+      sanity: true,
+      theme: true,
+      url: 'sample.church'
     }
 `,
   {
     flags: {
+      dry: {
+        type: 'boolean',
+        alias: 'd'
+      },
       url: {
         type: 'string',
         alias: 'u'
@@ -60,5 +71,11 @@ const cli = meow(
 }
 */
 
+console.clear();
+console.log(boxen('Welcome to the Create project for NFD', {padding: 1}));
+
 // Run index.js
-createNFD(cli.input[0], cli.flags);
+checkTools()
+  .then(() => askQuestions(cli.input[0], cli.flags))
+  .then(createProject)
+  .then(createNFD);
