@@ -5,6 +5,7 @@ This is a tooling shortcut for generating all needed components of a new site pr
 - Node (https://nodejs.org/en/download/)
 - Github CLI (https://github.com/cli/cli#installation)
 - Sanity CLI (npm install -g @sanity/cli)
+- Yarn
 
 
 ## instructions
